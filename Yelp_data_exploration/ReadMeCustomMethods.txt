@@ -11,7 +11,7 @@ add_two_matrix
 transfer_to_implicit
 getImplicitMatrix
 
-utils.timeSplit:
+utils.timesplit:
 time_ordered_split
 get_corpus_idx_list
 add_two_matrix
@@ -21,6 +21,7 @@ transfer_to_implicit
 
 prediction
 prediction.models:
+preprocess
 train
 get_I_K
 predict

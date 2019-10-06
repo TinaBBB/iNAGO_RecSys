@@ -73,7 +73,7 @@ def transfer_to_implicit(rating_matrix, threshold = 0):
     rating_matrix = temp_rating_matrix
     return rating_matrix
   
- def getImplicitMatrix(sparseMatrix, threashold=0):
+def getImplicitMatrix(sparseMatrix, threashold=0):
     temp_matrix = sparse.csr_matrix(sparseMatrix.shape)
     temp_matrix[(sparseMatrix > threashold).nonzero()] = 1
     return temp_matrix

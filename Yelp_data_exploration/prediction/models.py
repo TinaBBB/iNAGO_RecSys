@@ -154,7 +154,7 @@ def predict(matrix_train, k, similarity, item_similarity_en = False):
     return res
 
 #Get a UI matrix if it's not item_similarity based or else IU
-def predictUU(matrix_train, k, similarity1, similarity2, similarity3, chooseWeigthMethod = 'max', weight1, weight2, weight3, item_similarity_en = False):
+def predictUU(matrix_train, k, similarity1, similarity2, similarity3, weight1, weight2, weight3, chooseWeigthMethod = 'max', item_similarity_en = False):
     prediction_scores = []
     
     #inverse to IU matrix
