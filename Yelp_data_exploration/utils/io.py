@@ -9,20 +9,20 @@ Original file is located at
 
 import datetime
 import json
-import numpy as np
 import pandas as pd
 import time
-import yaml
 from itertools import permutations
 from scipy.sparse import csr_matrix
+from tqdm import tqdm
+import scipy.sparse as sparse
 
-def get_yelp_df(path = 'data/', filename = 'Export_CleanedReview.json', sampling=False, top_user_num=6100, top_item_num=4000):
-    
+def get_yelp_df(path = 'data/', filename = 'Export_CleanedReview.json', sampling=False, top_user_num=6100, top_item_num=4000, cross_valid = False,start_date = None, end_date = None):
     """
     Get the pandas dataframe
     Sampling only the top users/items by density 
     Implicit representation applies
     """
+    
     
     with open(filename,'r') as f:
         data = f.readlines()
@@ -31,6 +31,10 @@ def get_yelp_df(path = 'data/', filename = 'Export_CleanedReview.json', sampling
     data = data[0]
     #Get all the data from the data file
     df = pd.DataFrame(data)
+    
+    if cross_valid:
+    #cross validation
+        df = df[(df['date'] > start_date) & (df['date'] < end_date)]
     
     df.rename(columns={'stars': 'review_stars', 'text': 'review_text', 'cool': 'review_cool',
                        'funny': 'review_funny', 'useful': 'review_useful'},
@@ -61,7 +65,7 @@ def get_yelp_df(path = 'data/', filename = 'Export_CleanedReview.json', sampling
 
     df = df.reset_index(drop = True)
 
-    return df
+    return df 
 
 def filter_yelp_df(df, top_user_num=6100, top_item_num=4000):
     #Getting the reviews where starts are above 3
@@ -98,3 +102,38 @@ def valid_combinations(weights, numCandidate):
             list_uniqueComb.append(possible)
             
     return list_uniqueComb
+
+def setBinary (Explicitmatrix, threshold):
+    temp_rating_matrix = sparse.csr_matrix(Explicitmatrix.shape)
+    temp_rating_matrix[(Explicitmatrix >= threshold).nonzero()] = 1
+    Explicitmatrix = temp_rating_matrix
+    return Explicitmatrix
+
+#Item idex matrix stores the reivews starts
+#This function returns a list of index for the reviews included in training set 
+def get_corpus_idx_list(df, item_idx_matrix):
+    """
+    Input: 
+    df: total dataframe
+    item_idx_matrix: train index list got from time_split 
+    Output: row index in original dataframe for training data by time split
+    """
+    lst = []
+    #For all the users: 5791
+    for i in tqdm(range(len(item_idx_matrix))):
+        
+        #find row index where user_num_id is i
+        a = df.index[df['user_num_id'] == i].tolist()
+        
+        #loop through the busienss id that the user i reviewed for in offvalid set 
+        for item_idx in  item_idx_matrix[i]:
+            
+            #get the row index for reviews for business that the user liked in the train set
+            b = df.index[df['business_num_id'] == item_idx].tolist()
+            
+            #Find the index for which this user liked, one user only rate a business once
+            idx_to_add = list(set(a).intersection(b))
+            
+            if idx_to_add not in lst:
+                lst.extend(idx_to_add)
+    return lst

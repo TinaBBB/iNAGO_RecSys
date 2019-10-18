@@ -8,8 +8,6 @@ Original file is located at
 """
 
 from tqdm import tqdm
-from sklearn.metrics.pairwise import cosine_similarity
-
 #Stemming and Lemmatisation
 from nltk.stem.porter import PorterStemmer
 from nltk.stem.wordnet import WordNetLemmatizer
@@ -20,7 +18,9 @@ import statistics as stats
 from scipy.sparse import csr_matrix, load_npz, save_npz
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
+from sklearn.metrics.pairwise import cosine_similarity
 from nltk.tokenize import RegexpTokenizer
+from evaluation.metrics import evaluate
 # Get corpus and CountVector
 from sklearn.feature_extraction.text import CountVectorizer
 nltk.download('wordnet')
@@ -330,65 +330,28 @@ def sub_routine(vector_u, vector_train, topK=500):
 
     #so we only include the top K prediction score here
     return vector_u[:topK]
-  
-  #Get a UI matrix if it's not item_similarity based or else IU
-def predictUU_Min_Max_AVG(matrix_train, k, similarity1, similarity2, similarity3, similarity4, weight1, weight2, weight3, chooseWeigthMethod = None, item_similarity_en = False):
-    prediction_scores = []
-    
-    #inverse to IU matrix
-    if item_similarity_en:
-        matrix_train = matrix_train.transpose()
-        
-    #for each user or item, depends UI or IU 
-    for user_index in tqdm(range(matrix_train.shape[0])):
-    #for user_index in tqdm(range(1)):
-        
-        # Get user u's prediction scores for all items 
-        #Get prediction/similarity score for each user 1*num or user or num of items
-        vector_u1 = similarity1[user_index]
-        
-        if similarity2 is not None:
-            vector_u2 = similarity2[user_index]
-        
-        if similarity3 is not None:
-            vector_u3 = similarity3[user_index]
-            
-        if similarity4 is not None:
-            vector_u4 = similarity4[user_index]
-        
-        vector_u = vector_u1.copy()
-            
-        #If we are choosing the max, min, or avg or similarity scores
-        if chooseWeigthMethod is not None:
-            #loop through the user index 
-            for item_index in tqdm(range(matrix_train.shape[0])):
 
-                if chooseWeigthMethod == 'max':
-                    vector_u[item_index] = max(vector_u1[item_index], vector_u2[item_index], vector_u3[item_index],vector_u4[item_index])
-                elif chooseWeigthMethod == 'min':
-                    vector_u[item_index] = min(vector_u1[item_index], vector_u2[item_index], vector_u3[item_index],vector_u4[item_index])
-                elif chooseWeigthMethod == 'average':
-                    vector_u[item_index] = stats.mean([vector_u1[item_index], vector_u2[item_index], vector_u3[item_index]],vector_u4[item_index])
+def individualKNNPrediction (similarityMatrix, predictionMatrix, kRange, validOrTestMatrix):
+    "Declaration for kRange = range(50,120,10)"
+    similarity = train(similarityMatrix)
+    MAP10 = {}
+    for kValue in kRange:
+        user_item_prediction_score = predict(predictionMatrix, kValue, similarity, item_similarity_en= False)
+        user_item_predict = prediction(user_item_prediction_score, 50, predictionMatrix)
+        user_item_res = evaluate(user_item_predict, validOrTestMatrix)
         
-        similar_users = vector_u.argsort()[::-1][1:k+1]
         
-        # Get neighbors similarity weights and ratings
-        #similar_users_weights = similarity1[user_index][similar_users]
-        similar_users_weights = vector_u[similar_users]
+        MAP10[kValue] = user_item_res.get('MAP@10')[0]
         
-        #similar_users_weights_sum = np.sum(similar_users_weights)
-        #print(similar_users_weights.shape)
-        #shape: num of res * k
-        similar_users_ratings = matrix_train[similar_users].toarray()
-              
-        prediction_scores_u = similar_users_ratings * similar_users_weights[:, np.newaxis]
-        #print(prediction_scores_u)
+    return MAP10
+
+def simpleKNNPrediction (similarityMatrix, predictionMatrix, kValue, validOrTestMatrix):
+    "Declaration for kRange = range(50,120,10)"
+    similarity = train(similarityMatrix)
+    user_item_prediction_score = predict(predictionMatrix, kValue, similarity, item_similarity_en= False)
+    user_item_predict = prediction(user_item_prediction_score, 50, predictionMatrix)
+    user_item_res = evaluate(user_item_predict, validOrTestMatrix)
+
+    MAP10= user_item_res.get('MAP@10')[0]
         
-        prediction_scores.append(np.sum(prediction_scores_u, axis=0))
-        
-    res = np.array(prediction_scores)
-    
-    if item_similarity_en:
-        res = res.transpose()
-    return res
-    #return vector_u
+    return MAP10
