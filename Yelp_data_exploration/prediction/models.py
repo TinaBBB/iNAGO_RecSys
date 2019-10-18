@@ -15,6 +15,9 @@ from nltk.stem.porter import PorterStemmer
 from nltk.stem.wordnet import WordNetLemmatizer
 import re 
 import nltk
+import numpy as np
+import statistics as stats
+from scipy.sparse import csr_matrix, load_npz, save_npz
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from nltk.tokenize import RegexpTokenizer
@@ -71,7 +74,7 @@ def preprocess(df, reset_list = [',','.','?',';','however','but']):
         text = text.split()
         
         ##Stemming
-        ps=PorterStemmer()
+        #ps=PorterStemmer()
         
         #Lemmatisation
         lem = WordNetLemmatizer()
@@ -154,25 +157,77 @@ def predict(matrix_train, k, similarity, item_similarity_en = False):
     return res
 
 #Get a UI matrix if it's not item_similarity based or else IU
-def predictUU(matrix_train, k, similarity1, similarity2, similarity3, weight1, weight2, weight3, chooseWeigthMethod = 'max', item_similarity_en = False):
+def predictUU(matrix_train, k, similarity1=None, similarity2=None, similarity3=None, similarity4=None, chooseWeigthMethod = 'max', item_similarity_en = False):
     prediction_scores = []
-    
+    #Convert from list to ndarray, add an axis
+    if isinstance(chooseWeigthMethod, list):
+        chooseWeigthMethod = np.array(chooseWeigthMethod)[:, np.newaxis]
+   
+    "make sure that when passing in chooseWeightMethod, the weight must be aligned with similarity metrices, even if set to None"
+    "They should add to 1 as well"
     #inverse to IU matrix
     if item_similarity_en:
         matrix_train = matrix_train.transpose()
         
     #for each user or item, depends UI or IU 
     for user_index in tqdm(range(matrix_train.shape[0])):
-        # Get user u's prediction scores for all items
+    #for user_index in tqdm(range(10,20)):
+        
+        numberSimilarMatrix = 0
+        # Get user u's prediction scores for all items 
         #Get prediction/similarity score for each user 1*num or user or num of items
-        vector_u = similarity[user_index]
-
-        # Get closest K neighbors excluding user u self
-        #Decending accoding to similarity score, select top k
+        if similarity1 is not None:
+            vector_u1 = similarity1[user_index]
+            numberSimilarMatrix += 1
+        else:
+            vector_u1 = [0]*matrix_train.shape[0]
+            
+        if similarity2 is not None:
+            vector_u2 = similarity2[user_index]
+            numberSimilarMatrix += 1
+        else:
+            vector_u2 = [0]*len(vector_u1)
+            
+        if similarity3 is not None:
+            vector_u3 = similarity3[user_index]
+            numberSimilarMatrix += 1
+        else:
+            vector_u3 = [0]*len(vector_u1)
+            
+        if similarity4 is not None:
+            vector_u4 = similarity4[user_index]
+            numberSimilarMatrix += 1
+        else:
+            vector_u4 = [0]*len(vector_u1)
+        
+        #Temperary vector that stacks all 4 vectors together
+        tempVector = np.array([vector_u1,vector_u2,vector_u3,vector_u4])
+        
+        if chooseWeigthMethod is None:
+            #Get the similarity score from the first similarity matrix anyways 
+            vector_u = vector_u1.copy()
+            
+        #If we are choosing the max, min, avg or similarity scores
+        if chooseWeigthMethod is not None:
+            if chooseWeigthMethod == 'max':
+                vector_u = tempVector.max(axis=0)
+            elif chooseWeigthMethod == 'min':
+                vector_u = tempVector.min(axis=0)
+            elif chooseWeigthMethod == 'average':
+                vector_u = tempVector.mean(axis=0)
+            elif isinstance(chooseWeigthMethod, np.ndarray):
+                #Validate that number of weights passed in equals number of matrices
+                #assert(len(chooseWeigthMethod) == numberSimilarMatrix)
+                #Get the new combined similarity vector 
+                weighted_u = tempVector * chooseWeigthMethod
+                vector_u =np.sum(weighted_u, axis=0)
+                #print((vector_u == vector_u4).sum())
+                
         similar_users = vector_u.argsort()[::-1][1:k+1]
         
         # Get neighbors similarity weights and ratings
-        similar_users_weights = similarity[user_index][similar_users]
+        #similar_users_weights = similarity1[user_index][similar_users]
+        similar_users_weights = vector_u[similar_users]
         
         #similar_users_weights_sum = np.sum(similar_users_weights)
         #print(similar_users_weights.shape)
@@ -182,7 +237,6 @@ def predictUU(matrix_train, k, similarity1, similarity2, similarity3, weight1, w
         prediction_scores_u = similar_users_ratings * similar_users_weights[:, np.newaxis]
         #print(prediction_scores_u)
         
-        
         prediction_scores.append(np.sum(prediction_scores_u, axis=0))
         
     res = np.array(prediction_scores)
@@ -190,6 +244,7 @@ def predictUU(matrix_train, k, similarity1, similarity2, similarity3, weight1, w
     if item_similarity_en:
         res = res.transpose()
     return res
+    #return vector_u
 
 
 def predictII(matrix_train, k, similarity, item_similarity_en = False):
