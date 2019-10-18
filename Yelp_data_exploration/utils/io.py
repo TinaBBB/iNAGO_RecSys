@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 import time
 import yaml
+from itertools import permutations
+from scipy.sparse import csr_matrix
 
 def get_yelp_df(path = 'data/', filename = 'Export_CleanedReview.json', sampling=False, top_user_num=6100, top_item_num=4000):
     
@@ -82,3 +84,17 @@ def df_to_sparse(df, row_name='userId', col_name='movieId', value_name='rating',
         values = [1]*len(rows)
 
     return csr_matrix((values, (rows, cols)), shape=shape)
+
+#Get different combinations of weight for number of candidates
+def valid_combinations(weights, numCandidate):
+    '''generator of possible combinations of weights elements that add up to 1'''
+    #list_length = len(weights) # we will need this
+    list_uniqueComb = []
+    #out of the possible weights, find numCandidate numbers for combination
+    for possible in permutations(weights,numCandidate): # all possible orderings of weights
+        
+        #If combination found to sum up to 1 and unique
+        if sum(possible) == 1 and possible not in list_uniqueComb:
+            list_uniqueComb.append(possible)
+            
+    return list_uniqueComb
