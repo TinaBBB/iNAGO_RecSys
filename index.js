@@ -38,7 +38,12 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     let response = await get_recommend(2);
     agent.add(response);
     }
-
+  function saveData(data){
+    if(conv !== null){
+      console.log('conv is not null, save data')
+      conv.data.RecData = data;
+      }
+    }
   function get_recommend(i){
     //https://ViolaS.api.stdlib.com/InitialRecommendation@dev/
     // agent.add('providing recommendations...');
@@ -46,14 +51,18 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
         .then(function(data){
           let initial_recommendation = JSON.parse(data);
           console.log(initial_recommendation);
+          saveData(data);
+          //conv.ask("?????????");
           let responseToUser = "";
           responseToUser += 'I recommend '+initial_recommendation.information[i].name + '. ';
           responseToUser += 'The average rating is ' + initial_recommendation.information[i].business_stars + '. ';
           responseToUser += 'The cuisine type is '+ initial_recommendation.information[i].categories + '. ';
           responseToUser += 'The price range is ' + initial_recommendation.information[i].price+'. ';
           responseToUser += 'Other people said '+ initial_recommendation.information[i].explanation+'. ';
-          // conv.ask(responseToUser);
+          conv.ask(responseToUser);
           console.log(responseToUser);
+
+          console.log(conv.data.RecData);
           if(conv.surface.capabilities.has('actions.capability.SCREEN_OUTPUT')){
               let image = 'https://raw.githubusercontent.com/jbergant/udemydemoimg/master/meetup.png';
                 //if there's a screen avilable, add a card
@@ -61,10 +70,14 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
                   text: initial_recommendation.information[i].explanation,
                   subtitle: 'by ' + initial_recommendation.information[i].categories,
                   title: initial_recommendation.information[i].name,
+                  image: new Image({
+                      url: image,
+                      alt: initial_recommendation.information[i].name,
+                  }),
                   display: 'CROPPED',
                 }));
             }
-          return responseToUser;
+          return conv;
 
         }).catch(function (err) {
           console.log('No recommend data');
