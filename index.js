@@ -6,7 +6,7 @@ const functions = require('firebase-functions');
 const {WebhookClient} = require('dialogflow-fulfillment');
 const {Card, Suggestion} = require('dialogflow-fulfillment');
 const{BasicCard, Button, Image} = require('actions-on-google');
-
+const url = 'http://2cdbf550.ngrok.io/business';
 
 const requestAPI = require('request-promise');
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
@@ -27,64 +27,161 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   }
 
   async function Sys_Recommend(agent){
-    let response = await get_recommend(0);
+    let response = await get_recommend_initial();
     agent.add(response);
   }
   async function Sys_Critique_Star(agent){
-    let response = await get_recommend(1);
+    let response = await get_recommend("rating", agent.parameters['Critique_Rating'],agent.parameters['Postive_Negative']);
     agent.add(response);
     }
   async function Sys_Critique_Price(agent){
-    let response = await get_recommend(2);
+    //let response = await get_recommend(1);
+    let response = await get_recommend("price", agent.parameters['Critique_Price'],agent.parameters['Postive_Negative']);
     agent.add(response);
     }
-  function saveData(data){
-    if(conv !== null){
-      console.log('conv is not null, save data')
-      conv.data.RecData = data;
-      }
+  async function Sys_Critique_Name(agent){
+    let response = await get_recommend("name", "","");
+    agent.add(response);
     }
-  function get_recommend(i){
-    //https://ViolaS.api.stdlib.com/InitialRecommendation@dev/
-    // agent.add('providing recommendations...');
-    return requestAPI('https://violas.api.stdlib.com/initialrecommendation@dev/')
-        .then(function(data){
-          let initial_recommendation = JSON.parse(data);
-          console.log(initial_recommendation);
-          saveData(data);
-          //conv.ask("?????????");
-          let responseToUser = "";
-          responseToUser += 'I recommend '+initial_recommendation.information[i].name + '. ';
-          responseToUser += 'The average rating is ' + initial_recommendation.information[i].business_stars + '. ';
-          responseToUser += 'The cuisine type is '+ initial_recommendation.information[i].categories + '. ';
-          responseToUser += 'The price range is ' + initial_recommendation.information[i].price+'. ';
-          responseToUser += 'Other people said '+ initial_recommendation.information[i].explanation+'. ';
-          conv.ask(responseToUser);
-          console.log(responseToUser);
-
-          console.log(conv.data.RecData);
-          if(conv.surface.capabilities.has('actions.capability.SCREEN_OUTPUT')){
-              let image = 'https://raw.githubusercontent.com/jbergant/udemydemoimg/master/meetup.png';
-                //if there's a screen avilable, add a card
-              conv.ask(new BasicCard({
-                  text: initial_recommendation.information[i].explanation,
-                  subtitle: 'by ' + initial_recommendation.information[i].categories,
-                  title: initial_recommendation.information[i].name,
-                  image: new Image({
-                      url: image,
-                      alt: initial_recommendation.information[i].name,
-                  }),
-                  display: 'CROPPED',
-                }));
-            }
-          return conv;
-
-        }).catch(function (err) {
-          console.log('No recommend data');
-          console.log(err);
-        });
+  async function Sys_Critique_Cuisine(agent){
+    //let response = await get_recommend(1);
+    let response = await get_recommend("cuisine", agent.parameters['Critique_Category'],agent.parameters['Postive_Negative']);
+    agent.add(response);
   }
 
+  async function Sys_Critique_Distance(agent){
+    // let response = await get_recommend(4);
+    let response = await get_recommend("distance", agent.parameters['Critique_Distance'],agent.parameters['Postive_Negative']);
+    agent.add(response);
+    }
+
+
+    async function get_recommend(feature ,critiqueValue,positiveOrNegative ){
+      console.log("entered the get recommend, the 3 values are");
+      console.log(feature);
+      console.log(critiqueValue);
+      console.log(positiveOrNegative);
+      var options = {
+            method: 'PUT',
+            uri: url,
+            body: {
+                "feature": feature,
+                "positiveOrNegative" : positiveOrNegative,
+                "critiqueValue" : critiqueValue
+            },
+            json: true // Automatically stringifies the body to JSON
+        };
+      return requestAPI(options).then(function (data) {
+                //let recommendation = JSON.parse(data);
+                console.log(data);
+                let responseToUser =  "";
+                let price_rep = '';
+                if (data.Result.price === '$') {
+                    price_rep = '1 $ sign';
+                }else if (data.Result.price === '$$'){
+                    price_rep = '2 $ signs';
+                }else if (data.Result.price === '$$$'){
+                    price_rep = '3 $ signs';
+                }else{
+                    price_rep = '4 $ signs';
+                }
+                responseToUser += data.Result.addText + ' ';
+                responseToUser += 'Do you want to try ' + data.Result.name + '? ';
+                responseToUser += 'This ' + data.Result.cuisine + ' restaurant is ' + data.Result.distance+ ' away from you. ';
+                responseToUser += 'The restaurant is rated at ' + data.Result.rating + ' and it has ' + price_rep +'. ';
+                responseToUser += 'Other people said ';
+                responseToUser += data.Result.explanation;
+                responseToUser += ' about this place. ';
+                console.log(responseToUser);
+
+                // let responseToUser =  "sure";
+                // console.log(responseToUser);
+                return responseToUser;
+
+            }).catch(function (err) {
+                console.log("post failed.");
+                console.log(err);
+            });
+     }
+  async function get_recommend_initial(){
+    const options = {
+      method: 'GET'
+      // 'http://127.0.0.1:5002/business'
+      // ,uri: 'http://127.0.0.1:5002/business'
+      ,uri: url
+      // ,uri:'https://ViolaS.api.stdlib.com/InitialRecommendation@dev/'
+      // ,json: true
+    };
+    return requestAPI(options).then(function(data)
+    {
+      let initial_recommendation = JSON.parse(data);
+      let responseToUser = '';
+      let price_rep = '';
+      if (initial_recommendation.price === '$') {
+        price_rep = '1 $ sign';
+      }else if (initial_recommendation.price === '$$'){
+        price_rep = '2 $ signs';
+      }else if (initial_recommendation.price === '$$$'){
+        price_rep = '3 $ signs';
+      }else{
+        price_rep = '4 $ signs';
+      }
+
+      responseToUser += 'Sure. Do you want to try ' + initial_recommendation.name + '? ';
+      responseToUser += 'This ' + initial_recommendation.cuisine + ' restaurant is ' + initial_recommendation.distance+ ' away from you. ';
+      responseToUser += 'The restaurant is rated at ' + initial_recommendation.rating + ' and it has ' + price_rep +'. ';
+      // responseToUser += 'Other people said xxx about this place. ';
+      responseToUser += 'Other people said ';
+      responseToUser += initial_recommendation.explanation;
+      responseToUser += ' about this place. ';
+
+      return responseToUser;
+    }).catch(function (err) {
+      console.log('No recommend data');
+      console.log(err);
+    });
+
+  }
+
+  // return requestAPI('http://127.0.0.1:5002/business')
+  //     .then(function(data){
+  //       let initial_recommendation = JSON.parse(data);
+  //       console.log(initial_recommendation);
+  //       let responseToUser =  initial_recommendation;
+  //       // saveData(data);
+  //
+  //       // let responseToUser = "";
+  //       // responseToUser += 'I recommend '+initial_recommendation.information[i].name + '. ';
+  //       // responseToUser += 'The average rating is ' + initial_recommendation.information[i].business_stars + '. ';
+  //       // responseToUser += 'The cuisine type is '+ initial_recommendation.information[i].categories + '. ';
+  //       // responseToUser += 'The price range is ' + initial_recommendation.information[i].price+'. ';
+  //       // responseToUser += 'Other people said '+ initial_recommendation.information[i].explanation+'. ';
+  //       //
+  //       // // conv.ask(responseToUser);
+  //       //
+  //       // console.log(responseToUser);
+  //       //
+  //       // console.log(conv.data.RecData);
+  //       // if(conv.surface.capabilities.has('actions.capability.SCREEN_OUTPUT')){
+  //       //     let image = 'https://raw.githubusercontent.com/jbergant/udemydemoimg/master/meetup.png';
+  //       //       //if there's a screen avilable, add a card
+  //       //     conv.ask(new BasicCard({
+  //       //         text: 'Other people said: xxx'  ,// initial_recommendation.information[i].explanation,
+  //       //         subtitle: "//?",//initial_recommendation.information[i].categories,
+  //       //         title: "title???",//initial_recommendation.information[i].name,
+  //       //         image: new Image({
+  //       //             url: image,
+  //       //             alt: "asd",//initial_recommendation.information[i].name,
+  //       //         }),
+  //       //         display: 'CROPPED',
+  //       //       }));
+  //       //   }
+  //       return responseToUser;
+  //
+  //     }).catch(function (err) {
+  //       console.log('No recommend data');
+  //       console.log(err);
+  //     });
   // // Uncomment and edit to make your own intent handler
   // // uncomment `intentMap.set('your intent name here', yourFunctionHandler);`
   // // below to get this function to be run when a Dialogflow intent is matched
@@ -122,6 +219,10 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   intentMap.set('Request_for_Recommendation', Sys_Recommend);
   intentMap.set('User_Critique_Rating', Sys_Critique_Star);
   intentMap.set('User_Critique_Price', Sys_Critique_Price);
+  intentMap.set('User_Critique_Name', Sys_Critique_Name);
+  intentMap.set('User_Critique_Distance', Sys_Critique_Distance);
+  intentMap.set('User_Critique_Cuisine', Sys_Critique_Cuisine);
+
 
   // intentMap.set('your intent name here', yourFunctionHandler);
   // intentMap.set('your intent name here', googleAssistantHandler);
