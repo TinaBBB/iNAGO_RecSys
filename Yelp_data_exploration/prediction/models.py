@@ -157,7 +157,7 @@ def predict(matrix_train, k, similarity, item_similarity_en = False):
     return res
 
 #Get a UI matrix if it's not item_similarity based or else IU
-def predictUU(matrix_train, k, similarity1=None, similarity2=None, similarity3=None, similarity4=None, chooseWeigthMethod = 'max', item_similarity_en = False):
+def predictUU(matrix_train, k, chooseWeigthMethod, similarity1=None, similarity2=None, similarity3=None, similarity4=None, similarity5=None, item_similarity_en = False):
     prediction_scores = []
     #Convert from list to ndarray, add an axis
     if isinstance(chooseWeigthMethod, list):
@@ -200,8 +200,14 @@ def predictUU(matrix_train, k, similarity1=None, similarity2=None, similarity3=N
         else:
             vector_u4 = [0]*len(vector_u1)
         
+        if similarity5 is not None:
+            vector_u5 = similarity5[user_index]
+            numberSimilarMatrix += 1
+        else:
+            vector_u5 = [0]*len(vector_u1)
+        
         #Temperary vector that stacks all 4 vectors together
-        tempVector = np.array([vector_u1,vector_u2,vector_u3,vector_u4])
+        tempVector = np.array([vector_u1,vector_u2,vector_u3,vector_u4, vector_u5])
         
         if chooseWeigthMethod is None:
             #Get the similarity score from the first similarity matrix anyways 
@@ -355,3 +361,54 @@ def simpleKNNPrediction (similarityMatrix, predictionMatrix, kValue, validOrTest
     MAP10= user_item_res.get('MAP@10')[0]
         
     return MAP10
+
+def computeUUCombination(rtrain, rtrain_userAvg, userVisitMatrix, rtrain_implicit, combinationDict, SimilarityMatrixIndex, kTune, method='max'):
+
+    prediction1 = {}
+    prediction2 = {}
+    prediction3 = {}
+    prediction4 = {}
+
+    for combination, indexList in combinationDict.items():
+        #Loop through the similarity matrices 
+        for index in SimilarityMatrixIndex.keys():
+            if index in indexList:
+                if index == 1: 
+                    similarityOne = SimilarityMatrixIndex[1][0]
+                elif index == 2:
+                    similarityTwo = SimilarityMatrixIndex[2][0]
+                elif index == 3:
+                    similarityThree = SimilarityMatrixIndex[3][0]
+                elif index == 4:
+                    similarityFour = SimilarityMatrixIndex[4][0]
+            else:
+                if index == 1: 
+                    similarityOne = SimilarityMatrixIndex[1][1]
+                elif index == 2:
+                    similarityTwo = SimilarityMatrixIndex[2][1]
+                elif index == 3:
+                    similarityThree = SimilarityMatrixIndex[3][1]
+                elif index == 4:
+                    similarityFour = SimilarityMatrixIndex[4][1]
+
+        user_item_prediction_score1 = predictUU(rtrain, kTune, similarityOne, similarityTwo, similarityThree, similarityFour, chooseWeigthMethod=method, item_similarity_en= False)
+        user_item_predict1 = prediction(user_item_prediction_score1, 50, rtrain)
+        user_item_res1 = evaluate(user_item_predict1, rvalid)
+        prediction1[combination] = user_item_res1.get('MAP@10')[0]
+
+        user_item_prediction_score2 = predictUU(rtrain_userAvg, kTune, similarityOne, similarityTwo, similarityThree, similarityFour, chooseWeigthMethod=method, item_similarity_en= False)
+        user_item_predict2 = prediction(user_item_prediction_score2, 50, rtrain_userAvg)
+        user_item_res2 = evaluate(user_item_predict2, rvalid_userAvg)
+        prediction2[combination] = user_item_res2.get('MAP@10')[0]
+
+        user_item_prediction_score3 = predictUU(userVisitMatrix, kTune, similarityOne, similarityTwo, similarityThree, similarityFour, chooseWeigthMethod=method, item_similarity_en= False)
+        user_item_predict3 = prediction(user_item_prediction_score3, 50, userVisitMatrix)
+        user_item_res3 = evaluate(user_item_predict3, rvalid_implicit)         
+        prediction3[combination] = user_item_res3.get('MAP@10')[0]                
+
+        user_item_prediction_score4 = predictUU(rtrain_implicit, kTune, similarityOne, similarityTwo, similarityThree, similarityFour, chooseWeigthMethod=method, item_similarity_en= False)
+        user_item_predict4 = prediction(user_item_prediction_score4, 50, rtrain_implicit)
+        user_item_res4 = evaluate(user_item_predict4, rvalid_implicit)
+        prediction4[combination] = user_item_res4.get('MAP@10')[0]
+        
+    plotingCombination(prediction1, prediction2, prediction3, prediction4, kTune, method)
