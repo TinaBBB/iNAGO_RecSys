@@ -81,9 +81,17 @@ def main(args):
     
     progress.section("Get IP, IS, ID Dictionary")
     #intersection = get_intersection()
+    intersection_yonge_and_finch, intersection_bloor_and_bathurst, intersection_spadina_and_dundas,\
+    intersection_queen_and_spadina, intersection_bloor_and_yonge, intersection_dundas_and_yonge = get_intersection()
     IP_df, IP_dictionary = get_IP_matrix_dictionary(df, IK_similarity)
     IS_dictionary = get_IS_dictionary(df)
     #ID_dictionary = get_ID_dictionary(df,list(set(df['business_num_id'])),intersection)
+    ID_dictionary_yonge_and_finch = get_ID_dictionary(df,list(set(df['business_num_id'])),intersection_yonge_and_finch)
+    ID_dictionary_bloor_and_bathurst = get_ID_dictionary(df,list(set(df['business_num_id'])),intersection_bloor_and_bathurst)
+    ID_dictionary_spadina_and_dundas = get_ID_dictionary(df,list(set(df['business_num_id'])),intersection_spadina_and_dundas)
+    ID_dictionary_queen_and_spadina = get_ID_dictionary(df,list(set(df['business_num_id'])),intersection_queen_and_spadina)
+    ID_dictionary_bloor_and_yonge = get_ID_dictionary(df,list(set(df['business_num_id'])),intersection_bloor_and_yonge)
+    ID_dictionary_dundas_and_yonge = get_ID_dictionary(df,list(set(df['business_num_id'])),intersection_dundas_and_yonge)
     
     
     progress.section("user item predict")
@@ -100,11 +108,18 @@ def main(args):
     saveDictToJson(IP_dictionary, args.data_dir, 'ipDictionary', trainOrTest='train')
     saveDictToJson(IS_dictionary, args.data_dir, 'isDictionary', trainOrTest='train')
     #saveDictToJson(ID_dictionary, args.data_dir, 'idDictionary', trainOrTest='train')
-    
+    saveDictToJson(ID_dictionary_yonge_and_finch, args.data_dir, 'idDictionary_yongefinch', trainOrTest='train')
+    saveDictToJson(ID_dictionary_bloor_and_bathurst, args.data_dir, 'idDictionary_bloorbathurst', trainOrTest='train')
+    saveDictToJson(ID_dictionary_spadina_and_dundas, args.data_dir, 'idDictionary_spadinadundas', trainOrTest='train')
+    saveDictToJson(ID_dictionary_queen_and_spadina, args.data_dir, 'idDictionary_queenspadina', trainOrTest='train')
+    saveDictToJson(ID_dictionary_bloor_and_yonge, args.data_dir, 'idDictionary_blooryonge', trainOrTest='train')
+    saveDictToJson(ID_dictionary_dundas_and_yonge, args.data_dir, 'idDictionary_dundasyonge', trainOrTest='train')
     
     progress.section("Save datafiles Numpy")
     save_numpy_csr(rtrain, args.data_dir, "rtrain")
+    save_numpy_csr(I_C_matrix, args.data_dir, "icmatrix")
     #save_numpy(user_item_prediction_score, args.data_dir, "predictionScore")
+    save_numpy(IK_similarity, args.data_dir, "IKbased_II_similarity") #Tina requested for this name
     save_numpy(UI_Prediction_Matrix, args.data_dir, "UI_prediction_matrix")
     
     '''

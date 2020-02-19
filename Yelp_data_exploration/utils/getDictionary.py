@@ -87,6 +87,12 @@ def get_intersection():
     dundas_and_yonge = Point("43.6561,-79.3802")
     spadina_and_dundas = Point("43.653004,-79.398082")
     
-    intersection = spadina_and_dundas
+    intersection_yonge_and_finch = yonge_and_finch
+    intersection_bloor_and_bathurst = bloor_and_bathurst
+    intersection_queen_and_spadina = queen_and_spadina
+    intersection_bloor_and_yonge = bloor_and_yonge
+    intersection_dundas_and_yonge = dundas_and_yonge
+    intersection_spadina_and_dundas = spadina_and_dundas
     
-    return intersection
+    return intersection_yonge_and_finch, intersection_bloor_and_bathurst, intersection_spadina_and_dundas,\
+           intersection_queen_and_spadina, intersection_bloor_and_yonge, intersection_dundas_and_yonge
