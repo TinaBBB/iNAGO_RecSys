@@ -187,3 +187,4 @@ def get_UC_Matrix(IC_Matrix,rtrain_implicit):
     U_C_matrix_explicit = rtrain_implicit*IC_Matrix
     U_C_matrix_implicit = getImplicitMatrix(U_C_matrix_explicit,3)
     return U_C_matrix_explicit,U_C_matrix_implicit
+

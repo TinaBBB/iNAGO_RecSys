@@ -9,6 +9,8 @@ from tqdm import tqdm
 
 import numpy as np
 
+from evaluate import evaluate
+
 #Get a UI matrix if it's not item_similarity based or else IU
 def predict(matrix_train, k, similarity, item_similarity_en = False):
     prediction_scores = []
@@ -70,6 +72,30 @@ def prediction(prediction_score, matrix_Train, topK=50):
 
     return np.vstack(prediction)
 
+#One hot encoding for new users, passed in 1 * number items prediction score vector
+def prediction_oneHotEncode(prediction_score, initial_record):
+    prediction = []
+
+    #for each user
+    #for user_index in tqdm(range(matrix_Train.shape[0])):
+        
+    #take the prediction scores for user 1 * num res
+    vector_u =prediction_score
+
+    #The restuarant the user rated 1 * num res
+    vector_train = initial_record
+
+    if len(vector_train.nonzero()[0]) > 0:
+        vector_predict = sub_routine_modified(vector_u, vector_train)
+    else:
+        vector_predict = np.zeros(50, dtype=np.float32)
+
+    prediction.append(vector_predict)
+
+    return prediction
+
+#topK: the number of restuarants we are suggesting 
+#if vector_train has number, then the user has visited
 def sub_routine(vector_u, vector_train, topK=50):
 
     #index where non-zero
@@ -112,6 +138,7 @@ def prediction_modified(prediction_score, matrix_Train, user_id, topK = 50):
 
     return prediction[user_id]
 
+
 def sub_routine_modified(vector_u, vector_train):
 
     #index where non-zero
@@ -131,3 +158,36 @@ def sub_routine_modified(vector_u, vector_train):
 
     #so we only include the top K prediction score here
     return vector_u
+
+
+#Passing in the trained similarity matrx, for the purpose of cross validation
+def individualKNNPrediction (similarityMatrix, predictionMatrix, kRange, validOrTestMatrix, itemBased=False):
+    "Declaration for kRange = range(50,120,10)"
+    #similarity = train(similarityMatrix)
+    MAP10 = {}
+    #Loop through the kvalues 
+    for kValue in kRange:
+        if(itemBased==False):
+            user_item_prediction_score = predict(predictionMatrix, kValue, similarityMatrix, item_similarity_en= False)
+        else:
+            user_item_prediction_score = predict(predictionMatrix, kValue, similarityMatrix, item_similarity_en= True)
+        user_item_predict = prediction(user_item_prediction_score, 50, predictionMatrix)
+        user_item_res = evaluate(user_item_predict, validOrTestMatrix)
+        
+        MAP10[kValue] = user_item_res.get('MAP@10')
+        
+    return MAP10
+
+#Passing in the trained similarity matrx
+def KNNPrediction (similarityMatrix, predictionMatrix, kValue, validOrTestMatrix, itemBased=False):
+
+    if(itemBased==False):
+        user_item_prediction_score = predict(predictionMatrix, kValue, similarityMatrix, item_similarity_en= False)
+    else:
+        user_item_prediction_score = predict(predictionMatrix, kValue, similarityMatrix, item_similarity_en= True)
+    user_item_predict = prediction(user_item_prediction_score, 50, predictionMatrix)
+    user_item_res = evaluate(user_item_predict, validOrTestMatrix)
+
+        
+    return user_item_res.get('MAP@10')
+
