@@ -6,7 +6,8 @@ const functions = require('firebase-functions');
 const {WebhookClient} = require('dialogflow-fulfillment');
 const {Card, Suggestion} = require('dialogflow-fulfillment');
 const{BasicCard, Button, Image} = require('actions-on-google');
-const url = 'http://2cdbf550.ngrok.io/business';
+const url = 'http://b1bca4e6.ngrok.io';
+
 
 const requestAPI = require('request-promise');
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
@@ -20,12 +21,15 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   function welcome(agent) {
     agent.add(`Welcome to my agent!`);
   }
- 
+
   function fallback(agent) {
     agent.add(`I didn't understand`);
     agent.add(`I'm sorry, can you try again?`);
   }
-
+  async function Sys_clear(agent){
+      let response = await User_clear();
+      agent.add(response);
+  }
   async function Sys_Recommend(agent){
     let response = await get_recommend_initial();
     agent.add(response);
@@ -54,16 +58,70 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     let response = await get_recommend("distance", agent.parameters['Critique_Distance'],agent.parameters['Postive_Negative']);
     agent.add(response);
     }
+  async function Sys_User_Initialize_preference(agent){
+      let response = await initialization("business_id", "PUT", agent.parameters['initialization_restaurants']);
+      agent.add(response);
+  }
+
+  async function Sys_User_Initialize_intersection(agent){
+      let response = await initialization("Coordination", "POST", agent.parameters['initialization_intersection']);
+      agent.add(response);
+  }
+  async function User_clear(){
+      let init_url = url + '/clearup';
+      const options = {
+          method: 'GET'
+          // 'http://127.0.0.1:5002/business'
+          // ,uri: 'http://127.0.0.1:5002/business'
+          ,uri: init_url
+          // ,uri:'https://ViolaS.api.stdlib.com/InitialRecommendation@dev/'
+          // ,json: true
+      };
+      return requestAPI(options).then(function(data)
+      {
+          let initial_recommendation = JSON.parse(data);
+          let responseToUser = '';
+
+          return responseToUser;
+      }).catch(function (err) {
+          console.log('No recommend data');
+          console.log(err);
+      });
+
+  }
+  async function initialization(init_key, request, init_value){
+      console.log("initializing values...");
+      console.log(init_key);
+      let init_url = url + '/initialization';
+      var options = {
+          method: request,
+          uri: init_url,
+          body: {
+              init_key : init_value
+          },
+          json: true // Automatically stringifies the body to JSON
+      };
+      return requestAPI(options).then(function (data) {
+          //let recommendation = JSON.parse(data);
+          console.log(data);
 
 
-    async function get_recommend(feature ,critiqueValue,positiveOrNegative ){
+      }).catch(function (err) {
+          console.log("post failed.");
+          console.log(err);
+      });
+  }
+  async function get_recommend(feature ,critiqueValue,positiveOrNegative ){
+
       console.log("entered the get recommend, the 3 values are");
       console.log(feature);
       console.log(critiqueValue);
       console.log(positiveOrNegative);
+      let business_url = url + '/business';
+      console.log(url)
       var options = {
             method: 'PUT',
-            uri: url,
+            uri: business_url,
             body: {
                 "feature": feature,
                 "positiveOrNegative" : positiveOrNegative,
@@ -77,21 +135,22 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
                 let responseToUser =  "";
                 let price_rep = '';
                 if (data.Result.price === '$') {
-                    price_rep = '1 $ sign';
+                    price_rep = 'inexpensive';
                 }else if (data.Result.price === '$$'){
-                    price_rep = '2 $ signs';
+                    price_rep = 'moderately priced';
                 }else if (data.Result.price === '$$$'){
-                    price_rep = '3 $ signs';
+                    price_rep = 'premium priced';
                 }else{
-                    price_rep = '4 $ signs';
+                    price_rep = 'a fine dining restaurant';
                 }
+                responseToUser += data.Result.critiqueText + ' ';
                 responseToUser += data.Result.addText + ' ';
-                responseToUser += 'Do you want to try ' + data.Result.name + '? ';
+                responseToUser += 'Would you like to dine at ' + data.Result.name + '? ';
                 responseToUser += 'This ' + data.Result.cuisine + ' restaurant is ' + data.Result.distance+ ' away from you. ';
-                responseToUser += 'The restaurant is rated at ' + data.Result.rating + ' and it has ' + price_rep +'. ';
-                responseToUser += 'Other people said ';
+                responseToUser += data.Result.name + ' is rated at ' + data.Result.rating + ' and it\'s ' + price_rep +'. ';
+                responseToUser += 'Review highlights are: ';
                 responseToUser += data.Result.explanation;
-                responseToUser += ' about this place. ';
+                //responseToUser += ' about this place. ';
                 console.log(responseToUser);
 
                 // let responseToUser =  "sure";
@@ -102,13 +161,14 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
                 console.log("post failed.");
                 console.log(err);
             });
-     }
+  }
   async function get_recommend_initial(){
+    let business_url = url + '/business';
     const options = {
       method: 'GET'
       // 'http://127.0.0.1:5002/business'
       // ,uri: 'http://127.0.0.1:5002/business'
-      ,uri: url
+      ,uri: business_url
       // ,uri:'https://ViolaS.api.stdlib.com/InitialRecommendation@dev/'
       // ,json: true
     };
@@ -118,22 +178,26 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       let responseToUser = '';
       let price_rep = '';
       if (initial_recommendation.price === '$') {
-        price_rep = '1 $ sign';
+        price_rep = 'inexpensive';
       }else if (initial_recommendation.price === '$$'){
-        price_rep = '2 $ signs';
+        price_rep = 'moderately priced';
       }else if (initial_recommendation.price === '$$$'){
-        price_rep = '3 $ signs';
+        price_rep = 'premium priced';
       }else{
-        price_rep = '4 $ signs';
+        price_rep = 'a fine dining restaurant';
       }
 
-      responseToUser += 'Sure. Do you want to try ' + initial_recommendation.name + '? ';
-      responseToUser += 'This ' + initial_recommendation.cuisine + ' restaurant is ' + initial_recommendation.distance+ ' away from you. ';
-      responseToUser += 'The restaurant is rated at ' + initial_recommendation.rating + ' and it has ' + price_rep +'. ';
-      // responseToUser += 'Other people said xxx about this place. ';
-      responseToUser += 'Other people said ';
-      responseToUser += initial_recommendation.explanation;
-      responseToUser += ' about this place. ';
+        console.log(initial_recommendation.price)
+        console.log("price_rep")
+        console.log(price_rep)
+
+        responseToUser += 'Sure, would you like to dine at ' + initial_recommendation.name + '? ';
+        responseToUser += 'This ' + initial_recommendation.cuisine + ' restaurant is ' + initial_recommendation.distance+ ' away from you. ';
+        responseToUser += initial_recommendation.name + 'is rated at ' + initial_recommendation.rating + ' and it\'s ' + price_rep +'. ';
+        responseToUser += 'Review highlights are: ';
+        responseToUser += initial_recommendation.explanation;
+        //responseToUser += ' about this place. ';
+        console.log(responseToUser);
 
       return responseToUser;
     }).catch(function (err) {
@@ -222,9 +286,9 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   intentMap.set('User_Critique_Name', Sys_Critique_Name);
   intentMap.set('User_Critique_Distance', Sys_Critique_Distance);
   intentMap.set('User_Critique_Cuisine', Sys_Critique_Cuisine);
-
-
-  // intentMap.set('your intent name here', yourFunctionHandler);
+  intentMap.set('User_Initialize_Intersection_Selection',Sys_User_Initialize_intersection);
+  intentMap.set('User_Initialize_Restaurant_Input',Sys_User_Initialize_preference);
+  intentMap.set('User_clear', Sys_clear);
   // intentMap.set('your intent name here', googleAssistantHandler);
   agent.handleRequest(intentMap);
 });
