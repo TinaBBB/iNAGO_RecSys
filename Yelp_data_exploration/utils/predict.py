@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 import numpy as np
 
-from evaluate import evaluate
+from utils.evaluate import evaluate
 
 #Get a UI matrix if it's not item_similarity based or else IU
 def predict(matrix_train, k, similarity, item_similarity_en = False):
