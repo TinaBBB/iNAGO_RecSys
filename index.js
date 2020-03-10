@@ -6,7 +6,7 @@ const functions = require('firebase-functions');
 const {WebhookClient} = require('dialogflow-fulfillment');
 const {Card, Suggestion} = require('dialogflow-fulfillment');
 const{BasicCard, Button, Image} = require('actions-on-google');
-const url = 'http://b1bca4e6.ngrok.io';
+const url = 'http://tinashen.ngrok.io';
 
 
 const requestAPI = require('request-promise');
@@ -193,7 +193,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
         responseToUser += 'Sure, would you like to dine at ' + initial_recommendation.name + '? ';
         responseToUser += 'This ' + initial_recommendation.cuisine + ' restaurant is ' + initial_recommendation.distance+ ' away from you. ';
-        responseToUser += initial_recommendation.name + 'is rated at ' + initial_recommendation.rating + ' and it\'s ' + price_rep +'. ';
+        responseToUser += initial_recommendation.name + ' is rated at ' + initial_recommendation.rating + ' and it\'s ' + price_rep +'. ';
         responseToUser += 'Review highlights are: ';
         responseToUser += initial_recommendation.explanation;
         //responseToUser += ' about this place. ';
