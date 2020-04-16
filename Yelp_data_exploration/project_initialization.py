@@ -149,7 +149,7 @@ if __name__ == "__main__":
     # Commandline arguments
     parser = argparse.ArgumentParser(description="Project_Initialization")
     
-    parser.add_argument('--data_dir', dest='data_dir', default="..\\data\\",
+    parser.add_argument('--data_dir', dest='data_dir', default="../data/",
                         help='Directory path to the dataset. (default: %(default)s)')
     
     parser.add_argument('--data_name', dest='data_name', default='Cleaned_Toronto_Reviews.json',
